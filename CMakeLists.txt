@@ -3,7 +3,8 @@ project(opengl_squares C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(opengl_squares main.c)
+add_executable(opengl_squares src/main.c)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 
 
 find_package(glfw3 3.3 REQUIRED)
