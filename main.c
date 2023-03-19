@@ -20,6 +20,22 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
+typedef struct shape_t {
+    float x;
+    float y;
+    float x_speed;
+    float y_speed;
+}shape_t;
+
+shape_t create_shape(float x, float y, float x_speed, float y_speed) {
+    struct shape_t new_shape;
+    new_shape.x = x;
+    new_shape.y = y;
+    new_shape.x_speed = x_speed;
+    new_shape.y_speed = y_speed;
+    return new_shape;
+}
+
 
 void set_window_size(GLFWwindow *window, int width, int height)
 {
@@ -32,10 +48,10 @@ void set_window_size(GLFWwindow *window, int width, int height)
     glLoadIdentity();
 }
 
-void draw_shape(float x, float y, float r, float g, float b)
+void draw_shape(shape_t sh, float r, float g, float b)
 {
     glPushMatrix();
-    glTranslatef(x, y, 0.f);
+    glTranslatef(sh.x, sh.y, 0.f);
     glBegin(GL_QUADS);
     glColor3f(r, g, b);
     glVertex3f(-SHAPE_SIZE, -SHAPE_SIZE, 0.f);
@@ -46,24 +62,24 @@ void draw_shape(float x, float y, float r, float g, float b)
     glPopMatrix();
 }
 
-float get_distance(float x1, float y1, float x2, float y2)
+float get_distance(shape_t sh1, shape_t sh2)
 {
-    float dx = x2 - x1;
-    float dy = y2 - y1;
+    float dx = sh2.x - sh1.x;
+    float dy = sh2.y - sh1.y;
     return sqrt(dx * dx + dy * dy);
 }
 
-void update_position(float *x, float *y, float *x_speed, float *y_speed)
+void update_position(shape_t *sh)
 {
-    *x += *x_speed;
-    *y += *y_speed;
-    if (*x + SHAPE_SIZE > 1.f || *x - SHAPE_SIZE < -1.f)
+    sh->x += sh->x_speed;
+    sh->y += sh->y_speed;
+    if (sh->x + SHAPE_SIZE > 1.f || sh->x - SHAPE_SIZE < -1.f)
     {
-        *x_speed = -*x_speed;
+        sh->x_speed = -sh->x_speed;
     }
-    if (*y + SHAPE_SIZE > 1.f || *y - SHAPE_SIZE < -1.f)
+    if (sh->y + SHAPE_SIZE > 1.f || sh->y - SHAPE_SIZE < -1.f)
     {
-        *y_speed = -*y_speed;
+        sh->y_speed = -sh->y_speed;
     }
 }
 
@@ -73,48 +89,46 @@ void set_shape_size(float size) {
 
 int collisions = 0;
 
-void init_position(float *x1, float *y1, float *x2, float *y2);
 
-void handle_collision(float *x1, float *y1, float *x_speed1, float *y_speed1,
-                      float *x2, float *y2, float *x_speed2, float *y_speed2)
-{
-    float dist = get_distance(*x1, *y1, *x2, *y2);
+void handle_collisions(shape_t *sh1, shape_t *sh2) {
+    float dist = get_distance(*sh1, *sh2);
     if (dist < SHAPE_SIZE * 2)
     {
-        float temp_x_speed = *x_speed1;
-        float temp_y_speed = *y_speed1;
-        *x_speed1 = *x_speed2;
-        *y_speed1 = *y_speed2;
-        *x_speed2 = temp_x_speed;
-        *y_speed2 = temp_y_speed;
+        float temp_x_speed = sh1->x_speed;
+        float temp_y_speed = sh1->y_speed;
+        sh1->x_speed = sh2->x_speed;
+        sh1->y_speed = sh2->y_speed;
+        sh2->x_speed = temp_x_speed;
+        sh2->y_speed = temp_y_speed;
         collisions++;
     }
 }
 
-void init_speeds(float *x_speed1, float *y_speed1, float *x_speed2, float *y_speed2, float speed_coef)
-{
-    *x_speed1 = speed_coef*.01f;
-    *y_speed1 = speed_coef*.015f;
-    *x_speed2 = speed_coef*-.015f;
-    *y_speed2 = speed_coef*-.01f;
+void init_speeds(shape_t *sh1, shape_t *sh2, float multiplier) {
+    sh1->x_speed = multiplier*.01f;
+    sh1->y_speed = multiplier*.015f;
+    sh2->x_speed = multiplier*-.015f;
+    sh2->y_speed = multiplier*-.01f;
 }
 
-void init_position(float *x1, float *y1, float *x2, float *y2) {
-    (*x1) = -0.5f + SHAPE_SIZE + ((float)rand() / RAND_MAX) * 0.5f;
-    (*y1) = -0.5f + SHAPE_SIZE + ((float)rand() / RAND_MAX) * 0.5f;
-    (*x2) = 0.5f + SHAPE_SIZE - ((float)rand() / RAND_MAX) * 0.5f;
-    (*y2) = 0.5f + SHAPE_SIZE - ((float)rand() / RAND_MAX) * 0.5f;
+void init_position(shape_t *sh1, shape_t *sh2) {
+    sh1->x = -0.5f + SHAPE_SIZE + ((float)rand() / RAND_MAX) * 0.5f;
+    sh1->y = -0.5f + SHAPE_SIZE + ((float)rand() / RAND_MAX) * 0.5f;
+    sh2->x = 0.5f + SHAPE_SIZE - ((float)rand() / RAND_MAX) * 0.5f;
+    sh2->y = 0.5f + SHAPE_SIZE - ((float)rand() / RAND_MAX) * 0.5f;
 }
 
 
 int main(void)
 {
     srand(time(NULL));
-    float x_speed1, y_speed1, x_speed2, y_speed2;
-    init_speeds(&x_speed1, &y_speed1, &x_speed2, &y_speed2, 0.5f);
-    float x1, y1, x2, y2;
-    init_position(&x1, &y1, &x2, &y2);
+    shape_t sh1 = create_shape(0.f, 0.f, 0.01f, 0.015f);
+    shape_t sh2 = create_shape(0.f, 0.f, -0.015f, -0.01f);
+    init_speeds(&sh1, &sh2, 1.f);
+    init_speeds(&sh1, &sh2, 1.f);
+    init_position(&sh1, &sh2);
     set_shape_size(0.1f);
+
     GLFWwindow *window = NULL;
     glfwSetErrorCallback(error_callback);
     if (!glfwInit())
@@ -132,11 +146,11 @@ int main(void)
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         set_window_size(window, width, height);
-        draw_shape(x1, y1, 1.f, 0.f, 0.f);
-        draw_shape(x2, y2, 0.f, 0.f, 1.f);
-        update_position(&x1, &y1, &x_speed1, &y_speed1);
-        update_position(&x2, &y2, &x_speed2, &y_speed2);
-        handle_collision(&x1, &y1, &x_speed1, &y_speed1, &x2, &y2, &x_speed2, &y_speed2);
+        draw_shape(sh1, 1.f, 0.f, 0.f);
+        draw_shape(sh2, 0.f, 0.f, 1.f);
+        update_position(&sh1);
+        update_position(&sh2);
+        handle_collisions(&sh1, &sh2);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
